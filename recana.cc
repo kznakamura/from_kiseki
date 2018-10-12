@@ -8,6 +8,8 @@
 #include <TCanvas.h>
 #include <TStyle.h>
 #include <TGraph.h>
+#include <TText.h>
+#include <TLatex.h>
 
 using namespace std;
 
@@ -37,7 +39,7 @@ int main(int argc, char* argv[]){
 
   TH1D *h_phsum[rec_array_size];
   for(size_t elem=0; elem<rec_array_size; elem++){
-    h_phsum[elem] = new TH1D(Form("phsum_%dns",(int)rec_array[elem]), Form("phsum_%dns",(int)rec_array[elem]), 1600,0,800e3);
+    h_phsum[elem] = new TH1D(Form("phsum_%dns",(int)rec_array[elem]), Form("phsum_%dns",(int)rec_array[elem]), 8000,0,800e3);
     
   }
 
@@ -64,6 +66,13 @@ int main(int argc, char* argv[]){
   TCanvas *c_phsum = new TCanvas("phsum","phsum",100,100,1250,500);
   c_phsum -> Divide(5,2,0.01,0.01);
   gStyle -> SetStatX(0.2);
+  TCanvas *c_phsum_q = new TCanvas("phsum_q","phsum_q",100,400,1250,500);
+  c_phsum_q -> Divide(5,2,0.01,0.01);
+  
+  TText *tx_mean[rec_array_size];
+  TText *tx_sigma[rec_array_size];
+  TText *tx_fwhm[rec_array_size];
+
   for(size_t elem=0; elem<rec_array_size; elem++){
     c_phsum -> cd(elem+1) -> SetLogy(1);
     h_phsum[elem] -> Draw();
@@ -71,6 +80,18 @@ int main(int argc, char* argv[]){
     fit_mean[elem] = f_phsum[elem] -> GetParameter(1);
     fit_sigma[elem] = f_phsum[elem] -> GetParameter(2);
     fit_fwhm[elem] = fit_sigma[elem]/fit_mean[elem]*2.35*100;
+    c_phsum_q -> cd(elem+1);
+    c_phsum_q -> DrawFrame(630e3, 0, 680e3, 300);
+    h_phsum[elem] -> Draw("same");
+    tx_mean[elem] = new TText(0.25,0.8,Form("mean = %.0f",fit_mean[elem]));
+    tx_sigma[elem] = new TText(0.25,0.75,Form("sigma = %.0f",fit_sigma[elem]));
+    tx_fwhm[elem] = new TText(0.25,0.7,Form("FWHM %.3f %%",fit_fwhm[elem]));
+    tx_mean[elem] -> SetNDC(1);
+    tx_sigma[elem] -> SetNDC(1);
+    tx_fwhm[elem] -> SetNDC(1);
+    tx_mean[elem] -> Draw("same");
+    tx_sigma[elem] -> Draw("same");
+    tx_fwhm[elem] -> Draw("same");
   }
 
   TGraph *g_fitmean = new TGraph(rec_array_size,rec_array,fit_mean);
