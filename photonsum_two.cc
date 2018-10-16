@@ -25,19 +25,21 @@ public:
 
 
 private:
-  vector<double> rec_array{0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0, 40.0, 60.0}; //ns unit
+  double mem_tau1 = 53.05, mem_tau2 = 527.02, mem_tau = 66.05; //ns unit
+  double mem_alpha = 0.8895, mem_beta = 0.1424;
   double mem_sampling_us = 0;
   int mem_wav_ele_num[MAXHITCH][MAXSAMPLING]={};
   int PhotonSum(TF1 *f_rectime, int wav_ch_num);
   int mem_fid[10] = {};
   int mem_entry_num = 0;
   int mem_skipped_entry_num = 0;
+  double isK(double tau){return tau/(mem_sampling_us*1000*Npix);}
 };
 
 
 int main(int argc, char* argv[]){
   if(argc!=2){
-    cout << "usage : ./photonsum (inputfile name except for extension)" << endl;
+    cout << "usage : ./photonsum_two (inputfile name except for extension)" << endl;
     return 1;
   }
   string filename = string(argv[1]);
@@ -58,7 +60,7 @@ Analizer::Analizer(string filename){
   TFile *ifile1 = new TFile(ifilename1.c_str());
   TFile *ifile2 = new TFile(ifilename2.c_str());
   
-  string ofilename = filename + "__phsum.root";
+  string ofilename = filename + "__phsumtwo.root";
   TFile *ofile = new TFile(ofilename.c_str(),"recreate");
   
   TTree *particle_header = ((TTree*)ifile1 -> Get("particle_header")) -> CloneTree();
@@ -73,30 +75,26 @@ Analizer::Analizer(string filename){
   waveform_tree   -> SetBranchAddress("wav_ele_num", mem_wav_ele_num);
   wav2ana_tree    -> SetBranchAddress("fid", mem_fid);
 
-  const size_t rec_array_size = rec_array.size();
+  TTree *photonsum_two_header = new TTree("photonsum_two_header", "photonsum_two_header");
+  photonsum_two_header -> Branch("tau1", &mem_tau1);
+  photonsum_two_header -> Branch("tau2", &mem_tau2);
+  photonsum_two_header -> Branch("alpha", &mem_alpha);
+  photonsum_two_header -> Branch("beta", &mem_beta);
+  photonsum_two_header -> Branch("tau", &mem_tau);
+  photonsum_two_header -> Branch("EL_gain", &EL_gain);
+  photonsum_two_header -> Branch("Npix", &Npix);
+  photonsum_two_header -> Branch("sampling_us", &mem_sampling_us);
+  photonsum_two_header -> Branch("fidcut_condition", &fidcut_condition);
+  photonsum_two_header -> Fill();
+  
+  TTree *photonsum_two_tree = new TTree("photonsum_two_tree", "photonsum_two_tree");
+  int photon_sum;
+  photonsum_two_tree -> Branch("phsum", &photon_sum);
 
-  TTree *photonsum_header = new TTree("photonsum_header", "photonsum_header");
-  TTree *photonsum_tree = new TTree("photonsum_tree", "photonsum_tree");
-  //  photonsum_header -> Branch("rec_array_size", &mem_rec_array_size, "mem_rec_array_size/I");
-  photonsum_header -> Branch("rectime", &rec_array);
-  // photonsum_header -> Branch("rectime", rec_array, "rec_array[3]/D");
-  photonsum_header -> Branch("EL_gain", &EL_gain);
-  photonsum_header -> Branch("Npix", &Npix);
-  photonsum_header -> Branch("sampling_us", &mem_sampling_us);
-  photonsum_header -> Branch("fidcut_condition", &fidcut_condition);
-  photonsum_header -> Fill();
+  TF1 *f_rec;
+  f_rec = new TF1("rec_array_two","x*(1+[0]*x)/((1+[1]*x)*(1+[2]*x)-[3]*x*(1+[0]*x))", 0, MAXPHOTONNUM);
+  f_rec -> SetParameters(mem_alpha*isK(mem_tau2)+mem_beta*isK(mem_tau1), isK(mem_tau1), isK(mem_tau2), isK(mem_tau));
     
-  int photon_sum[rec_array_size] = {};
-  for(size_t elem=0; elem<rec_array_size; elem++){
-    photonsum_tree -> Branch(Form("phsum_%dns",(int)rec_array[elem]), &photon_sum[elem]);
-  }
-  
-  TF1 *f_rec[rec_array_size];
-  for(size_t elem=0; elem<rec_array_size; elem++){
-    f_rec[elem] = new TF1(Form("%dns",(int)rec_array[elem]),"x/(1+[0]*x)", 0, MAXPHOTONNUM);
-    f_rec[elem] -> SetParameter(0,rec_array[elem]/(mem_sampling_us*1000*Npix));
-  }
-  
   mem_entry_num = waveform_tree -> GetEntries();
   cout << "#### Analysis start!! (" << mem_entry_num << " events) ####" << endl;
   gRandom -> SetSeed(time(NULL));
@@ -111,28 +109,24 @@ Analizer::Analizer(string filename){
     }
     waveform_tree -> GetEntry(ev);
     int wav_ch_num = waveform_tree -> GetLeaf("wav_ch_num") -> GetValue(0);
-
-    for(size_t elem=0; elem<rec_array_size; elem++){
-      //      cout << rec_array[elem] << " " << PhotonSum(f_rec[elem], wav_ch_num) << endl;      
-      photon_sum[elem] = PhotonSum(f_rec[elem], wav_ch_num);
-    }
-    photonsum_tree -> Fill();
+    photon_sum = PhotonSum(f_rec, wav_ch_num);
+    photonsum_two_tree -> Fill();
   }
 
   cout << "#### Analysis finished (" << mem_skipped_entry_num << " / "<< mem_entry_num << " was skipped) ####" << endl;
 
-  TTree *photonsum_tailer = new TTree("photonsum_tailer", "photonsum_tailer");
-  photonsum_tailer -> Branch("analyzed_entries",&mem_entry_num);
-  photonsum_tailer -> Branch("skipped_entries", &mem_skipped_entry_num);
-  photonsum_tailer -> Fill();
+  TTree *photonsum_two_tailer = new TTree("photonsum_two_tailer", "photonsum_two_tailer");
+  photonsum_two_tailer -> Branch("analyzed_entries",&mem_entry_num);
+  photonsum_two_tailer -> Branch("skipped_entries", &mem_skipped_entry_num);  
+  photonsum_two_tailer -> Fill();
   
   particle_header -> Write();
   electron_header -> Write();
   waveform_header -> Write();
   wav2ana_header  -> Write();
-  photonsum_header-> Write();
-  photonsum_tree  -> Write();
-  photonsum_tailer-> Write();
+  photonsum_two_header-> Write();
+  photonsum_two_tree  -> Write();
+  photonsum_two_tailer-> Write();
     
   ifile1 -> Close();
   ifile2 -> Close();

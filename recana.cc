@@ -68,7 +68,8 @@ int main(int argc, char* argv[]){
   gStyle -> SetStatX(0.2);
   TCanvas *c_phsum_q = new TCanvas("phsum_q","phsum_q",100,400,1250,500);
   c_phsum_q -> Divide(5,2,0.01,0.01);
-  
+
+  TText *tx_rectime[rec_array_size];
   TText *tx_mean[rec_array_size];
   TText *tx_sigma[rec_array_size];
   TText *tx_fwhm[rec_array_size];
@@ -83,12 +84,15 @@ int main(int argc, char* argv[]){
     c_phsum_q -> cd(elem+1);
     c_phsum_q -> DrawFrame(630e3, 0, 680e3, 300);
     h_phsum[elem] -> Draw("same");
-    tx_mean[elem] = new TText(0.25,0.8,Form("mean = %.0f",fit_mean[elem]));
-    tx_sigma[elem] = new TText(0.25,0.75,Form("sigma = %.0f",fit_sigma[elem]));
-    tx_fwhm[elem] = new TText(0.25,0.7,Form("FWHM %.3f %%",fit_fwhm[elem]));
+    tx_rectime[elem] = new TText(0.25,0.8,Form("rectime = %d ns",(int)rec_array[elem]));
+    tx_mean[elem] = new TText(0.25,0.75,Form("mean = %.0f",fit_mean[elem]));
+    tx_sigma[elem] = new TText(0.25,0.7,Form("sigma = %.0f",fit_sigma[elem]));
+    tx_fwhm[elem] = new TText(0.25,0.65,Form("FWHM %.3f %%",fit_fwhm[elem]));
+    tx_rectime[elem] -> SetNDC(1);
     tx_mean[elem] -> SetNDC(1);
     tx_sigma[elem] -> SetNDC(1);
     tx_fwhm[elem] -> SetNDC(1);
+    tx_rectime[elem] -> Draw("same");
     tx_mean[elem] -> Draw("same");
     tx_sigma[elem] -> Draw("same");
     tx_fwhm[elem] -> Draw("same");
