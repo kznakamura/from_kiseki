@@ -91,9 +91,8 @@ Analizer::Analizer(string filename){
   int photon_sum;
   photonsum_two_tree -> Branch("phsum", &photon_sum);
 
-  TF1 *f_rec;
-  f_rec = new TF1("rec_array_two","x*(1+[0]*x)/((1+[1]*x)*(1+[2]*x)-[3]*x*(1+[0]*x))", 0, MAXPHOTONNUM);
-  f_rec -> SetParameters(mem_alpha*isK(mem_tau2)+mem_beta*isK(mem_tau1), isK(mem_tau1), isK(mem_tau2), isK(mem_tau));
+  TF1 *f_rec = new TF1("rec_array_two","x*([0]+[1]*x)/((1+[2]*x)*(1+[3]*x)-[4]*x*([0]+[1]*x))", 0, MAXPHOTONNUM);
+  f_rec -> SetParameters(mem_alpha+mem_beta, mem_alpha*isK(mem_tau2)+mem_beta*isK(mem_tau1), isK(mem_tau1), isK(mem_tau2), isK(mem_tau));
     
   mem_entry_num = waveform_tree -> GetEntries();
   cout << "#### Analysis start!! (" << mem_entry_num << " events) ####" << endl;
