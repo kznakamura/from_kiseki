@@ -68,8 +68,7 @@ int main(int argc, char* argv[]){
   fit_mean = f_phsum -> GetParameter(1);
   fit_sigma = f_phsum -> GetParameter(2);
   fit_fwhm = fit_sigma/fit_mean*2.35*100;
-  c_phsum -> cd(2);
-  c_phsum -> DrawFrame(650e3, 0, 700e3, 200);
+  c_phsum -> cd(2) -> DrawFrame(650e3, 0, 700e3, 200);
   h_phsum -> Draw("same");
   TText *tx_rectime_two = new TText(0.25,0.85,Form("tau1 = %.1f ns, tau2 = %.0f", tau1, tau2));
   TText *tx_albe = new TText(0.25,0.8,Form("(alpha = %.2f, beta = %.2f)", alpha, beta));

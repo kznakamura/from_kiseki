@@ -81,8 +81,7 @@ int main(int argc, char* argv[]){
     fit_mean[elem] = f_phsum[elem] -> GetParameter(1);
     fit_sigma[elem] = f_phsum[elem] -> GetParameter(2);
     fit_fwhm[elem] = fit_sigma[elem]/fit_mean[elem]*2.35*100;
-    c_phsum_q -> cd(elem+1);
-    c_phsum_q -> DrawFrame(630e3, 0, 680e3, 300);
+    c_phsum_q -> cd(elem+1) -> DrawFrame(630e3, 0, 680e3, 300);
     h_phsum[elem] -> Draw("same");
     tx_rectime[elem] = new TText(0.25,0.8,Form("rectime = %d ns",(int)rec_array[elem]));
     tx_mean[elem] = new TText(0.25,0.75,Form("mean = %.0f",fit_mean[elem]));
