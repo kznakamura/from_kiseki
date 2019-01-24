@@ -48,13 +48,15 @@ private:
   int mem_hitwav_clk_len = 0;
   double mem_hitwav_oneparcor_sum = 0.;
   double mem_hitwav_twoparcor_sum = 0.;
+  bool mem_overflow_onepar_flug = false;
+  bool mem_overflow_twopar_flug = false;
 
   int mem_entry_num = 0;
 };
 
 int main(int argc, char* argv[]){
   if(argc!=3){
-    cout << "usage : ./photo_realcorrection *****__phnum ../fitdata/****.root" << endl;
+    cout << "usage : ./photo_realcorrection *****__phnum ../../fitdata/****.root" << endl;
     return 1;
   }
   string photonfile = string(argv[1]);
@@ -66,12 +68,12 @@ int main(int argc, char* argv[]){
 
 Analizer::Analizer(TString photonfile, string fitfilepath){
   TString ifilename = photonfile + ".root";
-  TString fitfilename = fitfilepath.substr(11);
+  TString fitfilename = fitfilepath.substr(14);
   cout << "Input photon file: " << ifilename << ", Input fit file: " << fitfilename << endl;
   TFile *ifile1 = new TFile(ifilename);
   TFile *ifile_fit = new TFile(fitfilepath.c_str());
   
-  TString ofilename = photonfile + "__realcor.root";
+  TString ofilename = photonfile + "__realcor-" + fitfilename(0, fitfilename.Length()-5) + ".root";
   TFile *ofile = new TFile(ofilename,"recreate");
   
   TTree *particle_header = ((TTree*)ifile1 -> Get("particle_header")) -> CloneTree();
@@ -108,6 +110,8 @@ Analizer::Analizer(TString photonfile, string fitfilepath){
 
   TGraph *g_onepar_resi = new TGraph(mem_cycle, mem_onepar_nref_mean, mem_onepar_residual);
   TGraph *g_twopar_resi = new TGraph(mem_cycle, mem_twopar_nref_mean, mem_twopar_residual);
+  g_onepar_resi -> SetPoint(mem_cycle,0.0,1.0);
+  g_twopar_resi -> SetPoint(mem_cycle,0.0,1.0);
 
   TTree *realcor_header = new TTree("realcor_header", "realcor_header");
   realcor_header -> Branch("fitfilename", &fitfilename);
@@ -132,7 +136,9 @@ Analizer::Analizer(TString photonfile, string fitfilepath){
   realcor_tree -> Branch("hitwav_twoparcor_num", mem_hitwav_twoparcor_num, "hitwav_twoparcor_num[hitwav_clk_len]/D");
   realcor_tree -> Branch("hitwav_oneparcor_sum", &mem_hitwav_oneparcor_sum);
   realcor_tree -> Branch("hitwav_twoparcor_sum", &mem_hitwav_twoparcor_sum);
-  
+  realcor_tree -> Branch("overflow_onepar_flug", &mem_overflow_onepar_flug);
+  realcor_tree -> Branch("overflow_twopar_flug", &mem_overflow_twopar_flug);
+    
   mem_entry_num = photonnum_tree -> GetEntries();
   cout << "#### Analysis start!! (" << mem_entry_num << " events) ####" << endl;
     
@@ -143,15 +149,30 @@ Analizer::Analizer(TString photonfile, string fitfilepath){
     mem_hitwav_clk_len = 0;
     mem_hitwav_oneparcor_sum = 0;
     mem_hitwav_twoparcor_sum = 0;
+    mem_overflow_onepar_flug = false;
+    mem_overflow_twopar_flug = false;
     for(int ch=0; ch<wav_ch_num; ch++){
       for(int smp=0; smp<MAXSAMPLING; smp++){
-	mem_wav_oneparcor_num[ch][smp] = mem_wav_photo_num[ch][smp] * g_onepar_resi->Eval(mem_wav_photo_num[ch][smp]);
-	mem_wav_twoparcor_num[ch][smp] = mem_wav_photo_num[ch][smp] * g_twopar_resi->Eval(mem_wav_photo_num[ch][smp]);
+
+	if(mem_wav_photo_num[ch][smp] < (mem_onepar_nref_mean[mem_cycle-1] * mem_sampling_us)){
+	  mem_wav_oneparcor_num[ch][smp] = mem_wav_photo_num[ch][smp] * g_onepar_resi->Eval(mem_wav_photo_num[ch][smp]/mem_sampling_us);
+	}else{
+	  mem_wav_oneparcor_num[ch][smp] = mem_wav_photo_num[ch][smp];
+	  mem_overflow_onepar_flug = true;
+	}
+
+	if(mem_wav_photo_num[ch][smp] < (mem_twopar_nref_mean[mem_cycle-1] * mem_sampling_us)){
+	  mem_wav_twoparcor_num[ch][smp] = mem_wav_photo_num[ch][smp] * g_twopar_resi->Eval(mem_wav_photo_num[ch][smp]/mem_sampling_us);
+	}else{
+	  mem_wav_twoparcor_num[ch][smp] = mem_wav_photo_num[ch][smp];
+	  mem_overflow_onepar_flug = true;
+	}
+
 	if(mem_wav_photo_num[ch][smp] > MAXPHOTONNUM) cout << "MAXPHOTONNUM is too small" << endl;
 	if(mem_wav_photo_num[ch][smp] > 0){
           mem_hitwav_oneparcor_num[mem_hitwav_clk_len] = mem_wav_oneparcor_num[ch][smp];
 	  mem_hitwav_twoparcor_num[mem_hitwav_clk_len] = mem_wav_twoparcor_num[ch][smp];
-          mem_hitwav_clk_len++;
+	  mem_hitwav_clk_len++;
         }
       }
     }
